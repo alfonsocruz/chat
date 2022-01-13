@@ -1,26 +1,25 @@
-const express = require('express')
-const http = require('http')
-const { Server } = require('socket.io')
-const app = express()
+const app = require('./app');
+const http = require('http');
+const { Server } = require('socket.io');
+
 const server = http.createServer(app)
-const io = new Server(server)
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html')
+const io = new Server(server, {
+    transports: ["websocket", "polling"],
+    cors: {
+        origin: "http://localhost:8080"
+    }
 })
-// handles socket.io connections
+
 io.on('connection', socket => {
-  console.log('User connected')
-  
-  // when a user sends a message, broadcast it to all other users
-  socket.on('message', message => {
-    console.log('Message: ' + message)
-    socket.broadcast.emit('message', message)
-  })
-  // if a user disconnects, log it to the console
-  socket.on('disconnect', reason => {
-    console.log(`User disconnected (${reason})`)
-  })
+    console.log(`New Socket connected: ${socket.id}`)
+    require("./sockets/general")(io, socket);
+    require("./sockets/chat")(io, socket);
+    return io;
 })
-server.listen(8080, () => {
-  console.log('Server started - http://localhost:8080');
-})
+
+server.listen(
+    process.env.PORT_SERVER,
+    process.env.HOST_SERVER,
+    () => {
+        console.log(`Server started - Host: ${process.env.HOST_SERVER}, port: ${process.env.PORT_SERVER}`);
+    })
